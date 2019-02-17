@@ -5,4 +5,5 @@ __pycache__/
 *$py.class
 .Python
 *checkpoint.ipynb
+*config.py
 *localconfig.py
