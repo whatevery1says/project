@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>Project Class API - Projects Class Documentation</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Project Class API";
+    var mkdocs_page_input_path = "api.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> Projects Class Documentation</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="..">Home</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../importing/">Importing</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../creating/">Creating and Using Projects</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../versioning/">Project Versioning</a>
+	    </li>
+          
+            <li class="toctree-l1 current">
+		
+    <a class="current" href="./">Project Class API</a>
+    <ul class="subnav">
+            
+    <li class="toctree-l2"><a href="#methods">Methods</a></li>
+    
+        <ul>
+        
+            <li><a class="toctree-l3" href="#projectcleanself">Project.clean(self)</a></li>
+        
+            <li><a class="toctree-l3" href="#projectcopyself-name-versionnone">Project.copy(self, name, version=None)</a></li>
+        
+            <li><a class="toctree-l3" href="#projectcopy_templatesself-templates-project95dir">Project.copy_templates(self, templates, project_dir)</a></li>
+        
+            <li><a class="toctree-l3" href="#projectdeleteself-versionnone">Project.delete(self, version=None)</a></li>
+        
+            <li><a class="toctree-l3" href="#projectexistsself">Project.exists(self)</a></li>
+        
+            <li><a class="toctree-l3" href="#projectexportself-versionnone">Project.export(self, version=None)</a></li>
+        
+            <li><a class="toctree-l3" href="#projectget_latest_versionself">Project.get_latest_version(self):</a></li>
+        
+            <li><a class="toctree-l3" href="#projectget_latest_version_numberself">Project.get_latest_version_number(self)</a></li>
+        
+            <li><a class="toctree-l3" href="#projectget_versionself-value-keynumber">Project.get_version(self, value, key='number')</a></li>
+        
+            <li><a class="toctree-l3" href="#projectlaunchself-manifest-workflow-versionnone-newtrue">Project.launch(self, manifest, workflow, version=None, new=True)</a></li>
+        
+            <li><a class="toctree-l3" href="#projectmake_new_project_dirself-project95dir-templates">Project.make_new_project_dir(self, project_dir, templates)</a></li>
+        
+            <li><a class="toctree-l3" href="#projectparse_versions-outputnone">Project.parse_version(s, output=None)</a></li>
+        
+            <li><a class="toctree-l3" href="#projectsaveself-newfalse">Project.save(self, new=False)</a></li>
+        
+            <li><a class="toctree-l3" href="#projectunzipself-filenamenone-pathnone">Project.unzip(self, filename=None, path=None)</a></li>
+        
+            <li><a class="toctree-l3" href="#projectzipself-filename-source95dir-destination95dir">Project.zip(self, filename, source_dir, destination_dir)</a></li>
+        
+        </ul>
+    
+
+    </ul>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">Projects Class Documentation</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Project Class API</li>
+    <li class="wy-breadcrumbs-aside">
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="methods">Methods</h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+</div>
+<p>Currently, all methods are public.</p>
+<hr />
+<h3 id="projectcleanself">Project.clean(<em>self</em>)</h3>
+<p>Gets a reduced version of the manifest, removing empty values</p>
+<h3 id="projectcopyself-name-versionnone">Project.copy(<em>self</em>, <em>name</em>, <em>version=None</em>)</h3>
+<p>Inserts a copy of the current project into the database using a new <code>name</code> and <code>_id</code>. If no <code>version</code> is supplied, the latest version is used. Regardless, the new project is reset to version 1.</p>
+<p>If the user wishes to work with a copy of a project without saving it to the database, they should simply launch it. The unsaved project can always be saved as a new project from within the Workspace.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+</div>
+<p>This method could be extended to run in the Workspace, where the project folder would first be zipped up and added to the version dict in the manifest.</p>
+<h3 id="projectcopy_templatesself-templates-project95dir">Project.copy_templates(<em>self</em>, <em>templates</em>, <em>project_dir</em>)</h3>
+<p>Copies the templates from the templates folder to the a project folder.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+</div>
+<p>There needs to be a standardised way of locating the workflow. The WMS has a config value for the templates folder, and the Workspace has a path to this template. That means that the templates folder must be flat and template folder names should be of the form <code>topic-modeling</code>. </p>
+<h3 id="projectdeleteself-versionnone">Project.delete(<em>self</em>, <em>version=None</em>)</h3>
+<p>Deletes a project from the database using the manifest <code>_id</code>. If a version number (an integer) is supplied, that version's dict is removed from the manifest content, and the record is updated in the database. </p>
+<h3 id="projectexistsself">Project.exists(<em>self</em>)</h3>
+<p>Tests whether the <code>_id</code> listed in the project's manifests exists in the database. </p>
+<h3 id="projectexportself-versionnone">Project.export(<em>self</em>, <em>version=None</em>)</h3>
+<p>Downloads the latest version of a project. If a version number (an integer) is supplied, that version is downloaded instead. </p>
+<h3 id="projectget_latest_versionself">Project.get_latest_version(self):</h3>
+<p>Gets the dict for the latest version of a project by combining <code>Project.get_latest_version_number()</code> with <code>Project.get_version()</code>.</p>
+<h3 id="projectget_latest_version_numberself">Project.get_latest_version_number(<em>self</em>)</h3>
+<p>Returns the highest version number in the project's manifest. </p>
+<h3 id="projectget_versionself-value-keynumber">Project.get_version(<em>self</em>, <em>value</em>, <em>key='number'</em>)</h3>
+<p>Returns the manifest dict for a specific version of the project. The versions are searched by <code>key</code> containing the specified <code>value</code> Valid keys are <code>date</code>, <code>name</code>, and <code>number</code>. </p>
+<h3 id="projectlaunchself-manifest-workflow-versionnone-newtrue">Project.launch(<em>self</em>, <em>manifest</em>, <em>workflow</em>, <em>version=None</em>, <em>new=True</em>)</h3>
+<p>Launches the latest version of a project in the Workspace. If the user does not have any datapackages stored in the database, a new v1 project_dir is created. Otherwise, if the user clicks the main rocket icon, a new project_dir is created based on the latest version. If the user clicks on a specific version's rocket icon, a project_dir based on that version's datapackage is created. Where possible, a datapackage is unzipped to the Workspace. Otherwise, the data is written to the project_dir from the database.</p>
+<h3 id="projectmake_new_project_dirself-project95dir-templates">Project.make_new_project_dir(<em>self</em>, <em>project_dir</em>, <em>templates</em>)</h3>
+<p>A helper function for <code>Project.launch()</code>. Checks whether the <code>project_dir</code> is currently live in the Workspace. If not, a new <code>project_dir</code> is created. Templates are copied to it, and data is written to the <code>caches/json</code> folder from the database.</p>
+<h3 id="projectparse_versions-outputnone">Project.parse_version(<em>s</em>, <em>output=None</em>)</h3>
+<p>Splits the folder name for a project version into its component parts, date, version number, and project name. By default the method returns all three as separate values, so it must be called like</p>
+<pre><code class="python">date, name, number = parse_version('2019010101121212_v1_myproject')
+</code></pre>
+
+<p>The <code>output</code> parameter can be set to 'date', 'name', or 'number' to return a single value:</p>
+<pre><code class="python">date = parse_version('2019010101121212_v1_myproject', output='date')
+</code></pre>
+
+<h3 id="projectsaveself-newfalse">Project.save(<em>self</em>, <em>new=False</em>)</h3>
+<p>Updates the manifest record in the database or inserts a new one with version 1 and an empty workflow in the manifest.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+</div>
+<p>This method could be extended to run in the Workspace, where the project folder would first be zipped up and added to the version dict in the manifest. Setting <code>new=True</code> would commit the zip file to a new version number within the existing project.</p>
+<h3 id="projectunzipself-filenamenone-pathnone">Project.unzip(<em>self</em>, <em>filename=None</em>, <em>path=None</em>)</h3>
+<p>Unzips the specified file to a project folder in the Workspace. Generally called by  <code>Project.launch()</code>.</p>
+<h3 id="projectzipself-filename-source95dir-destination95dir">Project.zip(<em>self</em>, <em>filename</em>, <em>source_dir</em>, <em>destination_dir</em>)</h3>
+<p>Creates a zip archive of the <code>source_dir</code> and writes it to the <code>destination_dir</code>. The method is generally called by <code>Project.export()</code> with the <code>project_dir</code> and <code>exports_dir</code> as parameters.</p>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="../versioning/" class="btn btn-neutral" title="Project Versioning"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+      
+        <span><a href="../versioning/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js" defer></script>
+      <script src="../search/main.js" defer></script>
+
+</body>
+</html>
