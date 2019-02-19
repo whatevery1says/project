@@ -77,35 +77,7 @@
     
         <ul>
         
-            <li><a class="toctree-l3" href="#projectcleanself">Project.clean(self)</a></li>
-        
-            <li><a class="toctree-l3" href="#projectcopyself-name-versionnone">Project.copy(self, name, version=None)</a></li>
-        
-            <li><a class="toctree-l3" href="#projectcopy_templatesself-templates-project95dir">Project.copy_templates(self, templates, project_dir)</a></li>
-        
-            <li><a class="toctree-l3" href="#projectdeleteself-versionnone">Project.delete(self, version=None)</a></li>
-        
-            <li><a class="toctree-l3" href="#projectexistsself">Project.exists(self)</a></li>
-        
-            <li><a class="toctree-l3" href="#projectexportself-versionnone">Project.export(self, version=None)</a></li>
-        
-            <li><a class="toctree-l3" href="#projectget_latest_versionself">Project.get_latest_version(self):</a></li>
-        
-            <li><a class="toctree-l3" href="#projectget_latest_version_numberself">Project.get_latest_version_number(self)</a></li>
-        
-            <li><a class="toctree-l3" href="#projectget_versionself-value-keynumber">Project.get_version(self, value, key='number')</a></li>
-        
-            <li><a class="toctree-l3" href="#projectlaunchself-manifest-workflow-versionnone-newtrue">Project.launch(self, manifest, workflow, version=None, new=True)</a></li>
-        
-            <li><a class="toctree-l3" href="#projectmake_new_project_dirself-project95dir-templates">Project.make_new_project_dir(self, project_dir, templates)</a></li>
-        
-            <li><a class="toctree-l3" href="#projectparse_versions-outputnone">Project.parse_version(s, output=None)</a></li>
-        
-            <li><a class="toctree-l3" href="#projectsaveself-newfalse">Project.save(self, new=False)</a></li>
-        
-            <li><a class="toctree-l3" href="#projectunzipself-filenamenone-pathnone">Project.unzip(self, filename=None, path=None)</a></li>
-        
-            <li><a class="toctree-l3" href="#projectzipself-filename-source95dir-destination95dir">Project.zip(self, filename, source_dir, destination_dir)</a></li>
+            <li><a class="toctree-l3" href="#status">Status</a></li>
         
         </ul>
     
@@ -150,6 +122,29 @@
 <p class="admonition-title">Note</p>
 </div>
 <p>Currently, all methods are public.</p>
+<div class="admonition danger">
+<p class="admonition-title">Danger</p>
+</div>
+<h2 id="status">Status</h2>
+<h3 id="tested-methods">Tested Methods</h3>
+<ul>
+<li><code>Project.clean()</code></li>
+<li><code>Project.copy()</code></li>
+<li><code>Project.copy_templates()</code></li>
+<li><code>Project.delete()</code></li>
+<li><code>Project.exists()</code></li>
+<li><code>Project.get_latest_version_number()</code></li>
+<li><code>Project.get_latest_version()</code></li>
+<li><code>Project.get_version()</code></li>
+<li><code>Project.parse_version()</code></li>
+<li><code>Project.print_manifest()</code></li>
+<li><code>Project.unzip()</code></li>
+<li><code>Project.zip()</code></li>
+</ul>
+<h3 id="provisionally-tested-methods">Provisionally Tested Methods</h3>
+<ul>
+<li><code>Project.export()</code> -- has not yet been tested on pre-existing zipfiles and project folders in the Workspace</li>
+</ul>
 <hr />
 <h3 id="projectcleanself">Project.clean(<em>self</em>)</h3>
 <p>Gets a reduced version of the manifest, removing empty values</p>
@@ -182,7 +177,7 @@
 <p>Launches the latest version of a project in the Workspace. If the user does not have any datapackages stored in the database, a new v1 project_dir is created. Otherwise, if the user clicks the main rocket icon, a new project_dir is created based on the latest version. If the user clicks on a specific version's rocket icon, a project_dir based on that version's datapackage is created. Where possible, a datapackage is unzipped to the Workspace. Otherwise, the data is written to the project_dir from the database.</p>
 <h3 id="projectmake_new_project_dirself-project95dir-templates">Project.make_new_project_dir(<em>self</em>, <em>project_dir</em>, <em>templates</em>)</h3>
 <p>A helper function for <code>Project.launch()</code>. Checks whether the <code>project_dir</code> is currently live in the Workspace. If not, a new <code>project_dir</code> is created. Templates are copied to it, and data is written to the <code>caches/json</code> folder from the database.</p>
-<h3 id="projectparse_versions-outputnone">Project.parse_version(<em>s</em>, <em>output=None</em>)</h3>
+<h3 id="projectparse_versionself-s-outputnone">Project.parse_version(<em>self</em>, <em>s</em>, <em>output=None</em>)</h3>
 <p>Splits the folder name for a project version into its component parts, date, version number, and project name. By default the method returns all three as separate values, so it must be called like</p>
 <pre><code class="python">date, name, number = parse_version('2019010101121212_v1_myproject')
 </code></pre>
@@ -197,8 +192,8 @@
 <p class="admonition-title">Tip</p>
 </div>
 <p>This method could be extended to run in the Workspace, where the project folder would first be zipped up and added to the version dict in the manifest. Setting <code>new=True</code> would commit the zip file to a new version number within the existing project.</p>
-<h3 id="projectunzipself-filenamenone-pathnone">Project.unzip(<em>self</em>, <em>filename=None</em>, <em>path=None</em>)</h3>
-<p>Unzips the specified file to a project folder in the Workspace. Generally called by  <code>Project.launch()</code>.</p>
+<h3 id="projectunzipself-filepathnone-output95pathnone">Project.unzip(<em>self</em>, <em>filepath=None</em>, <em>output_path=None</em>)</h3>
+<p>Unzips the specified file to a specified folder.</p>
 <h3 id="projectzipself-filename-source95dir-destination95dir">Project.zip(<em>self</em>, <em>filename</em>, <em>source_dir</em>, <em>destination_dir</em>)</h3>
 <p>Creates a zip archive of the <code>source_dir</code> and writes it to the <code>destination_dir</code>. The method is generally called by <code>Project.export()</code> with the <code>project_dir</code> and <code>exports_dir</code> as parameters.</p>
               
