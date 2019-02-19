@@ -8,7 +8,7 @@ import zipfile
 from bson import BSON, Binary, json_util, ObjectId
 from datetime import datetime
 from pymongo import MongoClient
-from shutil import copytree, ignore_patterns
+from shutil import copytree, ignore_patterns, rmtree
 
 from config import config
 
@@ -129,36 +129,68 @@ class Project():
             version_dict = self.get_version(version)
         # Set the filename and path to write to
         zipname = version_dict['version_name'] + '.zip'
-        exports_dir = os.path.join(self.workspace_dir, 'exports')
-        print('Preparing to write ' + zipname + ' to ' + exports_dir + '.')
-        # Get the the zip file from the manifest, if possible, and copy it to the exports folder
+        exports_dir = self.workspace_dir + '/' + 'exports'
+        # First try to get the zip file from the manifest and copy it to the exports folder
         if 'version_zipfile' in version_dict:
             zipfile = version_dict['version_zipfile']
             with open(os.path.join(exports_dir, zipname), 'wb') as f:
                 f.write(zipfile)
-        # Otherwise, zip the project folder in the Workspace to the exports folder
-        else:
+        # Next try to find an active project folder in the Workspace and zip it to the exports folder
+        elif os.path.exists(os.path.join(self.workspace_dir, version_dict['version_name'])):
             project_dir = os.path.join(self.workspace_dir, version_dict['version_name'])
             zipfile = self.zip(zipname, project_dir, exports_dir)
-        return 'zipfile'
+        # Finally, create a new project folder in the exports directory and populate from the database
+        else:
+            # Make a version folder in the exports directory
+            project_dir = exports_dir + '/' + version_dict['version_name']
+            os.makedirs(project_dir, exist_ok=True)
+            # Get the data and put a manifest in it and write data to the caches/json folder
+            self.reduced_manifest['db_query'] = json.loads('{"$and":[{"metapath":"Corpus,guardian,RawData"}]}')
+            result = corpus_db.find(self.reduced_manifest['db_query'])
+            try:
+                with open(os.path.join(project_dir, 'datapackage.json'), 'w') as f:
+                    f.write(json.dumps(self.reduced_manifest, indent=2, sort_keys=False, default=JSON_UTIL))
+                json_caches = os.path.join(project_dir, 'caches/json')
+                os.makedirs(json_caches, exist_ok=True)
+                for item in result:
+                    filename = os.path.join(json_caches, item['name'] + '.json')
+                    with open(filename, 'w') as f:
+                        f.write(json.dumps(item, indent=2, sort_keys=False, default=JSON_UTIL))
+            except IOError:
+                errors.append('<p>Error: Could not write data files to the caches directory.</p>')
+            # Zip up the project folder, then delete the folder
+            zipfile = self.zip(zipname, project_dir, exports_dir)
+            rmtree(project_dir)
+        # Return the path to the zip archive
+        return exports_dir + '/' + zipname
 
     def get_latest_version_number(self):
         """Get the latest version number from the versions dict.
 
         Returns an integer or 1, if no version information is available.
         """
-        props = self.reduced_manifest
         version_numbers = []
-        if 'content' in props and len(props['content']) > 0:
-            for version in props['content']:
+        if 'content' in self.reduced_manifest and len(self.reduced_manifest['content']) > 0:
+            for version in self.reduced_manifest['content']:
                 version_numbers.append(int(version['version_number']))
-            return max(version_numbers)
+            _latest_version_number = max(version_numbers)
         else:
-            return 1
+            _latest_version_number = 1
+        return _latest_version_number
 
     def get_latest_version(self):
         """Get the dict for the latest version."""
-        return self.get_version(self.get_latest_version(), key='number')
+        _latest_version = {}
+        version_numbers = []
+        if 'content' in self.reduced_manifest and len(self.reduced_manifest['content']) > 0:
+            for version in self.reduced_manifest['content']:
+                version_numbers.append(int(version['version_number']))
+            _latest_version_number = max(version_numbers)
+            for version in self.reduced_manifest['content']:
+                if version['version_number'] == _latest_version_number:
+                    _latest_version = version['version_number']
+        return self.get_version(_latest_version)
+
 
     def get_version(self, value, key='number'):
         """Get the dict for a specific version.
@@ -377,15 +409,17 @@ class Project():
                 self.name + '</strong> could not be updated.'
             return {'result': 'fail', 'errors': [msg]}
 
-    def unzip(self, filename=None, path=None):
+    def unzip(self, filepath=None, output_path=None):
         """Unzip the specified file to a project folder in the Workspace.
 
         Uses the current path if one is not specified.
         """
-        # Not sure if the directory must exist before unzipping
-        if not os.path.exists(path):
-            os.makedirs(path)
-        pass
+        try:
+            with zipfile.ZipFile(filepath, 'r') as zip_ref:
+                zip_ref.extractall(output_path)
+            return {'result': 'success', 'output_path': output_path, 'errors': []}
+        except:
+            return {'result': 'fail', 'errors': ['<p>Could not unzip the file at ' + filepath + '.</p>']}
 
 
     def zip(self, filename, source_dir, destination_dir):
