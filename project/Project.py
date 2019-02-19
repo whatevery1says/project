@@ -206,7 +206,7 @@ class Project():
         else:
             raise ValueError('No versions were included in the manifest.')
 
-    def launch(self, manifest, workflow, version=None, new=True):
+    def launch(self, workflow, version=None, new=True):
         """Prepare the project in the Workspace.
 
         If the user does not have any datapackages stored in the database, a new v1
@@ -284,15 +284,15 @@ class Project():
     def make_new_project_dir(self, project_dir, templates):
         """Provide a helper function for Project.launch()."""
         errors = []
-        # Make the project_dir and copy the templates into it
-        os.makedirs(project_dir)
+        # The project_dir must not already exist
         error = self.copy_templates(templates, project_dir)
         if error != []:
             errors.append(error)
         # If the there is a db_query, get the data
+        self.reduced_manifest['db_query'] = json.loads('{"$and": [{"metapath":"Corpus,guardian,RawData"}]}')
         if 'db_query' in self.reduced_manifest:
             try:
-                result = list(corpus_db.find(json.dumps(self.reduced_manifest['db_query'])))
+                result = list(corpus_db.find(self.reduced_manifest['db_query']))
                 if len(result) == 0:
                     errors.append('<p>The database query returned no results.</p>')
             except pymongo.errors.OperationFailure as e:
@@ -303,13 +303,14 @@ class Project():
             # Write the data manifests to the caches/json folder
             try:
                 json_caches = os.path.join(project_dir, 'caches/json')
-                os.makedirs(json_caches)
+                os.makedirs(json_caches, exist_ok=True)
+                with open(os.path.join(project_dir, 'datapackage.json'), 'w') as f:
+                    f.write(json.dumps(self.reduced_manifest, indent=2, sort_keys=False, default=JSON_UTIL))
+
                 for item in result:
                     filename = os.path.join(json_caches, item['name'] + '.json')
-                    with open(filename, 'wb') as f:
-                        f.write(json.dumps(item, indent=2))
-                    with open(os.path.join(project_dir, 'datapackage.json'), 'wb') as f:
-                        f.write(json.dumps(self.reduced_manifest, indent=2))
+                    with open(filename, 'w') as f:
+                        f.write(json.dumps(item, indent=2, sort_keys=False, default=JSON_UTIL))
             except IOError:
                 errors.append('<p>Error: Could not write data files to the caches directory.</p>')
         else:
