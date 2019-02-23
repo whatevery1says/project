@@ -128,9 +128,11 @@
 <li><code>Project.copy_templates()</code></li>
 <li><code>Project.delete()</code></li>
 <li><code>Project.exists()</code></li>
+<li><code>Project.export()</code></li>
 <li><code>Project.get_latest_version_number()</code></li>
 <li><code>Project.get_latest_version()</code></li>
 <li><code>Project.get_version()</code></li>
+<li><code>Project.launch()</code></li>
 <li><code>Project.make_new_project_dir()</code></li>
 <li><code>Project.parse_version()</code></li>
 <li><code>Project.print_manifest()</code></li>
@@ -138,10 +140,8 @@
 <li><code>Project.zip()</code></li>
 </ul>
 <h3 id="provisionally-tested-methods">Provisionally Tested Methods</h3>
-<ul>
-<li><code>Project.export()</code> -- has not yet been tested on pre-existing zipfiles and project folders in the Workspace</li>
-<li><code>Project.launch()</code> -- Option 1 works. Options 2-3 have not been tested.</li>
-</ul>
+<p>-- TBD.</p>
+<p><strong>Last Update: Feb 23, 2019.</strong></p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 </div>
@@ -194,8 +194,8 @@
 <p class="admonition-title">Tip</p>
 </div>
 <p>This method could be extended to run in the Workspace, where the project folder would first be zipped up and added to the version dict in the manifest. Setting <code>new=True</code> would commit the zip file to a new version number within the existing project.</p>
-<h3 id="projectunzipself-filepathnone-output95pathnone">Project.unzip(<em>self</em>, <em>filepath=None</em>, <em>output_path=None</em>)</h3>
-<p>Unzips the specified file to a specified folder.</p>
+<h3 id="projectunzipself-sourcenone-output95pathnone-binaryfalse">Project.unzip(<em>self</em>, <em>source=None</em>, <em>output_path=None</em>, <em>binary=False</em>)</h3>
+<p>Unzips the specified source file to a specified folder. By default, the <code>source</code> variable is assumed to be a file path; however, setting <code>binary=False</code> will allow the method to accept the <code>version_zipfile</code> value (a binary file) from the manifest. <code>Project.unzip()</code> is called with <code>binary=True</code> in <code>Project.launch()</code>.</p>
 <h3 id="projectzipself-filename-source95dir-destination95dir">Project.zip(<em>self</em>, <em>filename</em>, <em>source_dir</em>, <em>destination_dir</em>)</h3>
 <p>Creates a zip archive of the <code>source_dir</code> and writes it to the <code>destination_dir</code>. The method is generally called by <code>Project.export()</code> with the <code>project_dir</code> and <code>exports_dir</code> as parameters.</p>
               
