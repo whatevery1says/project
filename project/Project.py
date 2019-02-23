@@ -7,6 +7,7 @@ import pymongo
 import zipfile
 from bson import BSON, Binary, json_util, ObjectId
 from datetime import datetime
+from io import BytesIO
 from pymongo import MongoClient
 from shutil import copytree, ignore_patterns, rmtree
 
@@ -122,6 +123,7 @@ class Project():
 
     def export(self, version=None):
         """Export a project in the Workspace."""
+        errors = []
         # Get the version dict. Use the latest version if no version number is supplied.
         if version == None:
             version_dict = self.get_latest_version()
@@ -130,16 +132,22 @@ class Project():
         # Set the filename and path to write to
         zipname = version_dict['version_name'] + '.zip'
         exports_dir = self.workspace_dir + '/' + 'exports'
-        # First try to get the zip file from the manifest and copy it to the exports folder
+        # 1. First try to get the zip file from the manifest and copy it to the exports folder
         if 'version_zipfile' in version_dict:
-            zipfile = version_dict['version_zipfile']
-            with open(os.path.join(exports_dir, zipname), 'wb') as f:
-                f.write(zipfile)
-        # Next try to find an active project folder in the Workspace and zip it to the exports folder
+            try:
+                zipfile = version_dict['version_zipfile']
+                with open(os.path.join(exports_dir, zipname), 'wb') as f:
+                    f.write(zipfile)
+            except IOError:
+                errors.append('Error: Could not write the zip archive to the exports directory.')
+        # 2. Next try to find an active project folder in the Workspace and zip it to the exports folder
         elif os.path.exists(os.path.join(self.workspace_dir, version_dict['version_name'])):
-            project_dir = os.path.join(self.workspace_dir, version_dict['version_name'])
-            zipfile = self.zip(zipname, project_dir, exports_dir)
-        # Finally, create a new project folder in the exports directory and populate from the database
+            try:
+                project_dir = os.path.join(self.workspace_dir, version_dict['version_name'])
+                zipfile = self.zip(zipname, project_dir, exports_dir)
+            except IOError:
+                errors.append('Error: Could not zip project folder from the Workspace to the exports directory.')
+        # 3. Finally, create a new project folder in the exports directory and populate from the database
         else:
             # Make a version folder in the exports directory
             project_dir = exports_dir + '/' + version_dict['version_name']
@@ -162,7 +170,10 @@ class Project():
             zipfile = self.zip(zipname, project_dir, exports_dir)
             rmtree(project_dir)
         # Return the path to the zip archive
-        return exports_dir + '/' + zipname
+        if len(errors) > 0:
+            return json.dumps({'result': 'fail', 'errors': errors})
+        else:
+            return json.dumps({'result': 'success', 'filepath': exports_dir + '/' + zipname, 'errors': errors})
 
     def get_latest_version_number(self):
         """Get the latest version number from the versions dict.
@@ -246,7 +257,7 @@ class Project():
         if new == True and version is not None:
             version_dict = self.get_latest_version()
             next_version_number = version_dict['version_number'] + 1
-            next_version_name = now + '_v' + next_version_number +'_' + self.reduced_manifest['name']
+            next_version_name = now + '_v' + str(next_version_number) +'_' + self.reduced_manifest['name']
             next_version = {
                 'version_date': now,
                 'version_number': next_version_number,
@@ -269,17 +280,19 @@ class Project():
                 version_dict = self.get_latest_version()
             else:
                 version_dict = self.get_version(version)
+            print('Launching ' + version_dict['version_name'])
             project_dir = os.path.join(self.workspace_dir, version_dict['version_name'])
-            # If the project is live in the workspace
+            # If the project is live in the workspace, return a link to the folder
             if os.path.exists(project_dir):
-                return json.dumps({'result': 'success', 'project_dir': project_dir, errors: []})
-            # Otherwise, use the datapackage
+                return json.dumps({'result': 'success', 'project_dir': project_dir, 'errors': []})
+            # Otherwise, unzip the datapackage from the manifest to the workspace
             else:
                 try:
-                    self.unzip(version_dict['version_zipfile'], project_dir)
+                    self.unzip(version_dict['version_zipfile'], project_dir, binary=True)
+                    print('Unzipped to ' + project_dir)
                 except:
                     errors.append('<p>Unknown error: Could not unzip the project datapackage to the project directory.</p>')
-                    return json.dumps({'result': 'fail', errors: errors})
+                    return json.dumps({'result': 'fail', 'errors': errors})
 
     def make_new_project_dir(self, project_dir, templates):
         """Provide a helper function for Project.launch()."""
@@ -410,17 +423,24 @@ class Project():
                 self.name + '</strong> could not be updated.'
             return {'result': 'fail', 'errors': [msg]}
 
-    def unzip(self, filepath=None, output_path=None):
+    def unzip(self, source=None, output_path=None, binary=False):
         """Unzip the specified file to a project folder in the Workspace.
 
         Uses the current path if one is not specified.
         """
-        try:
-            with zipfile.ZipFile(filepath, 'r') as zip_ref:
-                zip_ref.extractall(output_path)
+        if binary == True:
+            # Copy the zip archive to memory; then unzip it to the output path
+            temp_zipfile = zipfile.ZipFile(BytesIO(source))
+            temp_zipfile.extractall(output_path)
             return {'result': 'success', 'output_path': output_path, 'errors': []}
-        except:
-            return {'result': 'fail', 'errors': ['<p>Could not unzip the file at ' + filepath + '.</p>']}
+        # Otherwise, the source is a filepath
+        else:
+            try:
+                with zipfile.ZipFile(source, 'r') as zip_ref:
+                    zip_ref.extractall(output_path)                
+                return {'result': 'success', 'output_path': output_path, 'errors': []}
+            except:
+                return {'result': 'fail', 'errors': ['<p>Could not unzip the file at ' + source + '.</p>']}
 
 
     def zip(self, filename, source_dir, destination_dir):
