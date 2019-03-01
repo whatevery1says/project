@@ -141,6 +141,10 @@
 </ul>
 <h3 id="provisionally-tested-methods">Provisionally Tested Methods</h3>
 <p>-- TBD.</p>
+<h3 id="to-do">To Do</h3>
+<ul>
+<li>Implement <code>Project.copy()</code> as a "save as" function in both the WMS and the Workspace. A possible workflow is to launch the latest version of the project to work without saving and then call <code>Project.copy()</code>, rather than <code>Project.save()</code> from the Workspace to save it later. <code>Project.save()</code> should always save to the current project's manifest.</li>
+</ul>
 <p><strong>Last Update: Feb 23, 2019.</strong></p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -188,7 +192,7 @@
 <pre><code class="python">date = parse_version('2019010101121212_v1_myproject', output='date')
 </code></pre>
 
-<h3 id="projectsaveself-newfalse">Project.save(<em>self</em>, <em>new=False</em>)</h3>
+<h3 id="projectsaveself-new95versionfalse-new95project95namenone">Project.save(<em>self</em>, <em>new_version=False</em>, <em>new_project_name=None</em>)</h3>
 <p>Updates the manifest record in the database or inserts a new one with version 1 and an empty workflow in the manifest.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
