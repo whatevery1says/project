@@ -1,0 +1,13 @@
+{
+  "name": "new-york-times2017-2018",
+  "metapath": "Projects",
+  "namespace": "we1sv2.0",
+  "title": "The New York Times 2017-2018",
+  "contributors": [
+    {
+      "title": "Scott Kleinman"
+    }
+  ],
+  "db-query": "{\"$and\":[{\"metapath\":\"Corpus,new_york_times\"}]}",
+  "resources": []
+}
