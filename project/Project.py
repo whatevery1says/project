@@ -350,78 +350,128 @@ class Project():
         """Print the manifest."""
         print(json.dumps(self.reduced_manifest, indent=2, sort_keys=False, default=JSON_UTIL))
 
-    def save(self, new=False):
-        """Save a  project in the database."""
-        # Note: new parameter is not yet handled
-        action = 'inserted'
-        project_exists = self.exists()
-        if project_exists:
-            action = 'updated'
-        try:
-            if project_exists == True:
-                print('The project already exists. Updating...')
+    def save(self, new_version=False, new_project_name=None):
+        """Save a project's existing database record.
+        
+        Saves with or without creating a new version. The function does not yet add a new
+        zipfile to the manifest.
+
+        Returns the project's _id.
+        """
+        errors = []
+        # We're just updating the manifest.
+        if self.exists() and new_version == False:
+            try:
                 projects_db.update_one({'_id': ObjectId(self._id)},
-                                    {'$set': self.reduced_manifest}, upsert=False)
-            else:
-                print('The project does not exist. Inserting...')
-                now = datetime.today().strftime('%Y%m%d%H%M%S')
-                self.reduced_manifest['content'] = {
-                    'version_date': now,
-                    'version_number': 1,
-                    'version_name': now + '_v1_' + self.reduced_manifest['name'],
-                    'version_workflow': None
-                }
-                projects_db.insert_one(self.reduced_manifest)
-            return {'result': 'success', 'errors': []}
-        except pymongo.errors.OperationFailure as e:
-            print(e.code)
-            print(e.details)
-            msg = 'Unknown Error: The record for <code>name</code> <strong>' + \
-                self.name + '</strong> could not be ' + action + '.'
-            return {'result': 'fail', 'errors': [msg]}
-
-    ## The next two methods need to be incorporated into save()
-
-    def save_new_version(self, workflow='None', zipfile='None'):
-        """Save a new version to a project."""
-        try:
+                                                {'$set': self.reduced_manifest}, upsert=False)
+            except pymongo.errors.OperationFailure as e:
+                print(e.code)
+                print(e.details)
+                errors.append('Error: Could not update the database.')
+        # We're adding a new version before updating the manifest
+        elif self.exists() and new_version == True:
+            version_dict = self.get_latest_version()
+            _, b, c = self.parse_version(version_dict['version_name'])
             now = datetime.today().strftime('%Y%m%d%H%M%S')
-            new_version = {
-                    'version_date': now,
-                    'version_number': self.get_latest_version_number() + 1,
-                    'version_name': now + '_v1_' + self.reduced_manifest['name'],
-                    'version_workflow': workflow
-                }
-            # NB. This does not have the actual zip file
+            new_version_num = int(b) + 1
+            new_version = {}
+            new_version['version_date'] = now
+            new_version['version_number'] = new_version_num
+            new_version['version_name'] = now + '_v' + str(new_version_num) + '_' + c
             self.reduced_manifest['content'].append(new_version)
-            projects_db.update_one({'_id': ObjectId(self._id)},
-                                {'$set': self.reduced_manifest}, upsert=False)
-            return {'result': 'success', 'errors': []}
-        except pymongo.errors.OperationFailure as e:
-            print(e.code)
-            print(e.details)
-            msg = 'Unknown Error: The record for <code>name</code> <strong>' + \
-                self.name + '</strong> could not be updated.'
-            return {'result': 'fail', 'errors': [msg]}
+            try:
+                projects_db.update_one({'_id': ObjectId(self._id)},
+                                                {'$set': {'content': self.reduced_manifest['content']}}, upsert=False)
+            except pymongo.errors.OperationFailure as e:
+                print(e.code)
+                print(e.details)
+                errors.append('Error: Could not update the database.')
+        # We are creating an entirely new record with version 1
+        else:
+            version_dict = {
+                'version_date': now,
+                'version_name': now + '_v1_' + new_project_name,
+                'version_number': 1
+            }
+            self.reduced_manifest['content'].append(version_dict)
+            try:
+                result = projects_db.insert_one(self.reduced_manifest)
+                _id = str(result['_id'])
+            except pymongo.errors.OperationFailure as e:
+                print(e.code)
+                print(e.details)
+                errors.append('Error: Could not update the database.')
+        # Return the result
+        if len(errors) == 0:
+            return {'result': 'success', '_id': self._id, 'errors': []}
+        else:
+            return {'result': 'fail', 'errors': errors}
 
-    def save_as(self, name, workflow='None', zipfile='None'):
-        """Save a copy of a project with a new name."""
-        try:
+    def save_as(self, new_project_name, old_project_name=None,
+                old_project_version=None):
+        """Save a project's existing database record.
+        
+        Saves with or without creating a new version.
+        
+        This method is still untested.
+        """
+        errors = []
+        # If the project has already been saved, copy it with a new name.
+        if self.exists():
+            self.reduced_manifest['name'] = new_project_name
+            del self.reduced_manifest['_id']
             now = datetime.today().strftime('%Y%m%d%H%M%S')
-            self.reduced_manifest['content'] = {
-                    'version_date': now,
-                    'version_number': 1,
-                    'version_name': now + '_v1_' + self.reduced_manifest['name'],
-                    'version_workflow': workflow
+            # Make a new project with a fresh version 1 dict
+            if old_project_name is None:
+                version_dict = {
+                    'version_name': now + '_v1_' + new_project_name,
+                    'version_number': 1
                 }
-            projects_db.insert_one(self.reduced_manifest)
-            return {'result': 'success', 'errors': []}
-        except pymongo.errors.OperationFailure as e:
-            print(e.code)
-            print(e.details)
-            msg = 'Unknown Error: The record for <code>name</code> <strong>' + \
-                self.name + '</strong> could not be updated.'
-            return {'result': 'fail', 'errors': [msg]}
+                self.reduced_manifest['content'] = version_dict
+            # An old project is specified, so use a previous version
+            else:
+                if old_project_version is None:
+                    version_dict = self.get_latest_version()
+                else:
+                    version_dict = self.get_version(old_project_version)
+                version_dict['version_number'] = 1
+                version_dict['version_name'] = now + '_v1_' + new_project_name 
+                a, _, c = self.parse_version(version_dict['version_name'])
+                version_dict['version_name'] = a + '_v1_' + c
+                self.reduced_manifest['content'] = version_dict
+            try:
+                result = projects_db.insert_one(self.reduced_manifest)
+                _id = str(result['_id'])
+            except pymongo.errors.OperationFailure as e:
+                print(e.code)
+                print(e.details)
+                errors.append('Error: Could not update the database.')
+        # The project has not been saved to the database, so you are
+        # calling save_as from the Workspace.
+        else:
+            if old_project_name == None:
+                now = datetime.today().strftime('%Y%m%d%H%M%S')
+                new_manifest = self.reduced_manifest
+                new_manifest = new_project_name
+                version_dict = {
+                    'version_date': now,
+                    'version_name': now + '_v1_' + new_project_name,
+                    'version_number': 1
+                }
+                self.reduced_manifest['content'] = version_dict
+                try:
+                    result = projects_db.insert_one(new_manifest)
+                    _id = str(result['_id'])
+                except pymongo.errors.OperationFailure as e:
+                    print(e.code)
+                    print(e.details)
+                    errors.append('Error: Could not update the database.')
+        # Return the result
+        if len(errors) == 0:
+            return {'result': 'success', '_id': self._id, 'errors': []}
+        else:
+            return {'result': 'fail', 'errors': errors}
+
 
     def unzip(self, source=None, output_path=None, binary=False):
         """Unzip the specified file to a project folder in the Workspace.
