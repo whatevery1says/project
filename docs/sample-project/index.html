@@ -1,0 +1,72 @@
+﻿<html>
+<head>
+  <meta charset="utf-8">
+  <title>Demo Project Structure</title>
+<link href="css/skin-win8/ui.easytree.css" rel="stylesheet" class="skins" type="text/css" />
+<script src="js/jquery.min.js"></script>
+<script src="js/jquery.easytree.min.js"></script>
+</head>
+<body>
+<h5>Demo Project Structure</h5>
+<div id="demo1_menu">
+    <ul>
+        <li class="isFolder isExpanded">
+            modules
+            <ul>
+               <li class="isFolder isExpanded">topic-modeling
+                <ul>
+                  <li class="isFolder">topics50
+                    <ul>
+                      <li class="isFolder">caches</li>
+                    </ul>
+                  </li>
+                  <li class="isFolder">topics250
+                    <ul>
+                      <li class="isFolder">caches</li>
+                    </ul>
+                  </li>
+                  <li>model_topics.ipynb</li>
+                </ul>
+              </li>
+               <li class="isFolder">dfr-browser</li>
+               <li class="isFolder isExpanded">pyLDAvis
+                  <ul>
+                    <li class="isFolder isExpanded">topics250
+                      <ul>
+                        <li class="isFolder isExpanded">caches
+                          <ul>
+                            <li>index.html</li>
+                          </ul>
+                        </li>
+                      </ul>
+                    </li>
+                    <li>create_pyldavis.ipynb</li>
+                  </ul>
+               </li>
+               <li>topic-bubbles</li>
+            </ul>
+        </li>
+        <li class="isFolder isExpanded">
+            project_data
+            <ul>
+                <li class="isFolder isExpanded">json
+                  <ul>
+                    <li>doc1.json</li>
+                    <li>doc2.json</li>
+                    <li>doc3.json</li>
+                  </ul>
+                </li>
+                <li>remove_duplicates.ipynb</li>
+                <li>remove_duplicates.ipynb</li>
+            </ul>
+        </li>
+        <li>datapackage.json</li>
+        <li>start.json</li>
+        <li>start.ipynb</li>
+    </ul>
+</div>
+<script>
+    $('#demo1_menu').easytree();
+</script>
+</body>
+</html>
