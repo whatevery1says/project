@@ -5,7 +5,9 @@ This folder contains the template files for a WE1S project. The structure and us
 - The file `datapackage.json` is a sample file. 
 - The file `start_template.ipynb` contains the clean html for the Start page, whereas the file `start.ipynb` is re-written when modules are run. When a project is deployed live, any previous `start.ipynb` should be deleted and the `start_template.ipynb` file should be renamed to `start.ipynb`.
 
-Some further details:
+## Sample Project Structure
+
+A sample of the project structure viewed as a file/folder hierarchy can be viewed at <a href="https://whatevery1says.github.io/project/sample-project/index.html" target="_blank">https://whatevery1says.github.io/project/sample-project/index.html</a>.
 
 ## The `datapackage.json` File
 
