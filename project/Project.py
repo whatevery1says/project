@@ -13,7 +13,7 @@ from bson import BSON, Binary, json_util, ObjectId
 from collections import defaultdict
 from datetime import datetime
 from io import BytesIO
-from pymongo import MongoClient
+from pymongo import MongoClient, ReturnDocument
 from shutil import copytree, ignore_patterns, rmtree
 
 from config import config
@@ -484,11 +484,7 @@ class Project():
         if path is not None:
             self.reduced_manifest['content'] = self.create_version_dict(path)
         # Execute the database query and return the result
-        result = self.save_record(action)
-        if result is not None:
-            return {'result': 'fail', 'errors': [result]}
-        else:
-            return {'result': 'success', '_id': result['_id'], 'errors': []}
+        return self.save_record(action)
 
     def save_record(self, action='insert'):
         """Insert or update a record in the database.
@@ -497,15 +493,18 @@ class Project():
         """
         try:
             if action == 'update':
-                projects_db.update_one({'_id': ObjectId(self._id)},
-                                                {'$set': self.reduced_manifest}, upsert=False)
+                result = projects_db.find_one_and_update({'_id': ObjectId(self._id)},
+                                                {'$set': self.reduced_manifest}, upsert=False,
+                                                projection={'_id': True}, return_document=ReturnDocument.AFTER)
+                _id = result['_id']
             else:
-                projects_db.insert_one(self.reduced_manifest)
-            return None
+                result = projects_db.insert_one(self.reduced_manifest)
+                _id = result.inserted_id
+            return {'result': 'success', '_id': _id, 'errors': []}
         except pymongo.errors.OperationFailure as e:
             print(e.code)
             print(e.details)
-            return 'Error: Could not update the database.'
+            return {'result': 'fail', 'errors': ['Error: Could not update the database.']}
 
     def save_as(self, path=None, new_name=None):
         """Handle save as requests from the WMS or workspace.
