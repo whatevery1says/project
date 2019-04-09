@@ -544,22 +544,14 @@ class Project():
                 # Change the manifest version dict
                 self.reduced_manifest['content'] = self.create_version_dict(path, 1)
                 # Now insert the record in the database
-                result = self.save_record('insert')
-                if result is not None:
-                    return {'result': 'fail', 'errors': [result]}
-                else:
-                    return {'result': 'success', '_id': result['_id'], 'errors': []}
+                return self.save_record('insert')
             # We just need to insert a new database record with the new name
             else:
                 self.reduced_manifest['name'] = new_name
                 self.reduced_manifest['content'] = []
                 if '_id' in self.reduced_manifest:
                     del self.reduced_manifest['_id']
-                result = self.save_record('insert')
-                if result is not None:
-                    return {'result': 'fail', 'errors': [result]}
-                else:
-                    return {'result': 'success', '_id': result['id'], 'errors': []}
+                return self.save_record('insert')
 
     def unzip(self, source=None, output_path=None, binary=False):
         """Unzip the specified file to a project folder in the Workspace.
