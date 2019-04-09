@@ -143,9 +143,9 @@
 <p>-- TBD.</p>
 <h3 id="to-do">To Do</h3>
 <ul>
-<li>Implement <code>Project.copy()</code> as a "save as" function in both the WMS and the Workspace. A possible workflow is to launch the latest version of the project to work without saving and then call <code>Project.copy()</code>, rather than <code>Project.save()</code> from the Workspace to save it later. <code>Project.save()</code> should always save to the current project's manifest.</li>
+<li>Test <code>Project.save()</code> and <code>Project.save_as()</code> (with accompanying helper functions).</li>
 </ul>
-<p><strong>Last Update: Feb 23, 2019.</strong></p>
+<p><strong>Last Update: Apr 8, 2019.</strong></p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 </div>
@@ -154,6 +154,11 @@
 <h2 id="api">API</h2>
 <h3 id="projectcleanself">Project.clean(<em>self</em>)</h3>
 <p>Gets a reduced version of the manifest, removing empty values</p>
+<h3 id="projectclean_nbself-nbfile-clean95outputstrue-clean95notebook95metadata95fieldsnone-clean95cell95metadata95fieldsnone-clean95tags95none-clean95empty95cellsfalse-savefalse">Project.clean_nb(<em>self</em>, <em>nbfile</em>, <em>clean_outputs=True</em>, <em>clean_notebook_metadata_fields=None</em>, <em>clean_cell_metadata_fields=None</em>, <em>clean_tags_=None</em>, <em>clean_empty_cells=False</em>, <em>save=False</em>)</h3>
+<p>Cleans metadata fields and outputs from a Jupyter notebook. By default, only the outputs are cleaned, although the method will typically be called with <code>clean_empty_cells=True</code>. The method returns a JSON string with the cleaned notebook. If <code>save</code> is set to <code>True</code>, the source notebook will be overwritten with the cleaned JSON string. </p>
+<p>Based on <a href="https://gitlab.tue.nl/jupyter-projects/nbtoolbelt/blob/master/src/nbtoolbelt/cleaning.py">nbtoolbelt</a>.</p>
+<h3 id="projectcompare_filesself-existing95file-new95file">Project.compare_files(<em>self</em>, <em>existing_file</em>, <em>new_file</em>)</h3>
+<p>Hashes and compares two files. Returns <code>True</code> if they are equivalent.</p>
 <h3 id="projectcopyself-name-versionnone">Project.copy(<em>self</em>, <em>name</em>, <em>version=None</em>)</h3>
 <p>Inserts a copy of the current project into the database using a new <code>name</code> and <code>_id</code>. If no <code>version</code> is supplied, the latest version is used. Regardless, the new project is reset to version 1.</p>
 <p>If the user wishes to work with a copy of a project without saving it to the database, they should simply launch it. The unsaved project can always be saved as a new project from within the Workspace.</p>
@@ -167,6 +172,10 @@
 <p class="admonition-title">Tip</p>
 </div>
 <p>There needs to be a standardised way of locating the workflow. The WMS has a config value for the templates folder, and the Workspace has a path to this template. That means that the templates folder must be flat and template folder names should be of the form <code>topic-modeling</code>. </p>
+<h3 id="projectcount_sourceself-source">Project.count_source(<em>self</em>, <em>source</em>)</h3>
+<p>This method is a helper for <code>Project.copy_nb()</code>. It counts and returns the number of non-blank lines, words, and non-whitespace characters in a Jupyter notebook cell.</p>
+<h3 id="projectcreate_version_dictself-pathnone-versionnone">Project.create_version_dict(<em>self</em>, <em>path=None</em>, <em>version=None</em>)</h3>
+<p>Creates and returns a new dictionary containing version metadata to be stored in the manifest's <code>content</code> field. If a project path is given, the project folder is zipped and compared to the latest existing zip archive. If it differs, a new dict is created with a higher version number.</p>
 <h3 id="projectdeleteself-versionnone">Project.delete(<em>self</em>, <em>version=None</em>)</h3>
 <p>Deletes a project from the database using the manifest <code>_id</code>. If a version number (an integer) is supplied, that version's dict is removed from the manifest content, and the record is updated in the database. </p>
 <h3 id="projectexistsself">Project.exists(<em>self</em>)</h3>
@@ -198,6 +207,10 @@
 <p class="admonition-title">Tip</p>
 </div>
 <p>This method could be extended to run in the Workspace, where the project folder would first be zipped up and added to the version dict in the manifest. Setting <code>new=True</code> would commit the zip file to a new version number within the existing project.</p>
+<h3 id="projectsave_asself-pathnone-new95namenone">Project.save_as(<em>self</em>, <em>path=None</em>, <em>new_name=None</em>)</h3>
+<p>Creates a duplicate of a project with a new name. If a <code>path</code> to an open project in the Workspace is supplied, that folder's contents are copied to a new project folder, notebook cells are reset, and a new manifest is written for the project. Finally, a new database record is created with the zipped folder as version 1. Otherwise, a new record is created in the database based on the old one. </p>
+<h3 id="projectsave_recordself-actioninsert">Project.save_record(<em>self</em>, <em>action='insert'</em>)</h3>
+<p>Inserts or updates a new record in the database. This is a helper function to reduce code repetition.</p>
 <h3 id="projectunzipself-sourcenone-output95pathnone-binaryfalse">Project.unzip(<em>self</em>, <em>source=None</em>, <em>output_path=None</em>, <em>binary=False</em>)</h3>
 <p>Unzips the specified source file to a specified folder. By default, the <code>source</code> variable is assumed to be a file path; however, setting <code>binary=False</code> will allow the method to accept the <code>version_zipfile</code> value (a binary file) from the manifest. <code>Project.unzip()</code> is called with <code>binary=True</code> in <code>Project.launch()</code>.</p>
 <h3 id="projectzipself-filename-source95dir-destination95dir">Project.zip(<em>self</em>, <em>filename</em>, <em>source_dir</em>, <em>destination_dir</em>)</h3>

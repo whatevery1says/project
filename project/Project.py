@@ -1,11 +1,16 @@
 """Project.py."""
 
+import glob
+import hashlib
 import json
 import re
 import os
+import nbformat
 import pymongo
+import sys
 import zipfile
 from bson import BSON, Binary, json_util, ObjectId
+from collections import defaultdict
 from datetime import datetime
 from io import BytesIO
 from pymongo import MongoClient
@@ -51,6 +56,75 @@ class Project():
                 data[k] = v
         return data
 
+    def clean_nb(self, nbfile, clean_outputs=True, clean_notebook_metadata_fields=None, clean_cell_metadata_fields=None, clean_tags=None, clean_empty_cells=False, save=False):
+        """Clean metadata fields and outputs from notebook.
+
+        Cleans outputs only by default.
+        Takes a path to the notebook file. Returns a json object with the cleaned notebook.
+        Based on nbtoolbelt: https://gitlab.tue.nl/jupyter-projects/nbtoolbelt/blob/master/src/nbtoolbelt/cleaning.py
+        """
+        # Read the file
+        try:
+            nb = nbformat.read(nbfile, as_version=4)
+        except Exception as e:
+            print('{}: {}'.format(type(e).__name__, e), sys.stderr)
+        freq = defaultdict(int)  # number of cleanings
+        # delete notebook (global) metadata fields
+        if isinstance(clean_notebook_metadata_fields, list) and len(clean_notebook_metadata_fields) > 0:
+            for field in clean_notebook_metadata_fields:
+                if field in nb.metadata:
+                    del nb.metadata[field]
+                    freq['global ' + field] += 1
+        # delete empty cells, if desired
+        n = len(nb.cells)
+        if clean_empty_cells:
+            nb.cells = [cell for cell in nb.cells if self.count_source(cell.source)[0]]
+        if n > len(nb.cells):
+            freq['empty cells'] = n - len(nb.cells)
+        # traverse all cells, and delete fields
+        for _, cell in enumerate(nb.cells):  # Assign an index if needed for debugging
+            ct = cell.cell_type
+            # delete cell metadata fields
+            if isinstance(clean_cell_metadata_fields, list) and len(clean_cell_metadata_fields) > 0:
+                for field in clean_cell_metadata_fields:
+                    if field in cell.metadata:
+                        del cell.metadata[field]
+                        freq['cell ' + field] += 1
+            # delete cell tags
+            if 'tags' in cell.metadata and isinstance(clean_tags, list) and len(clean_tags) > 0:
+                removed_tags = {tag for tag in cell.metadata.tags if tag in clean_tags}
+                for tag in removed_tags:
+                    freq['tag ' + tag] += 1
+                clean_tags = [tag for tag in cell.metadata.tags if tag not in clean_tags]
+                if clean_tags:
+                    cell.metadata.tags = clean_tags
+                else:
+                    del cell.metadata['tags']
+            # clean outputs of code cells, if requested
+            if ct == 'code' and clean_outputs == True:
+                if cell.outputs:
+                    cell.outputs = []
+                    freq['outputs'] += 1
+                cell.execution_count = None
+        # re-write the json file or return it to a variable
+        if save == True:
+            with open(nbfile, 'w') as f:
+                f.write(json.dumps(nb, indent=2))
+        else:
+            return json.dumps(nb, indent=2)
+
+    def compare_files(self, existing_file, new_file):
+        """Hash and compare two files.
+
+        Returns True if they are equivalent.
+        """
+        existing_hash = hashlib.sha256(open(existing_file, 'rb').read()).digest()
+        new_hash = hashlib.sha256(open(new_file, 'rb').read()).digest()
+        if existing_hash == new_hash:
+            return True
+        else:
+            return False
+
     def copy(self, name, version=None):
         """Insert a copy of the current project into the database using a new name and _id.
 
@@ -87,6 +161,52 @@ class Project():
         except IOError:
             return '<p>Error: The templates could not be copied to the project directory.</p>'
 
+    def count_source(self, source):
+        """Count number of non-blank lines, words, and non-whitespace characters.
+
+        Used by clean_nb().
+
+        :param source: string to count
+        :return: number of non-blank lines, words, and non-whitespace characters
+        """
+        lines = [line for line in source.split('\n') if line and not line.isspace()]
+        words = source.split()
+        chars = ''.join(words)
+        return len(lines), len(words), len(chars)
+
+    def create_version_dict(self, path=None, version=None):
+        """Create and return a version dict.
+
+        If a project path is given, the project folder is zipped
+        and compared to the latest existing zip archive. If it
+        differs, a new dict is created with a higher version number.
+        """
+        # Get the latest version number or 1 if it doesn't exist
+        if version == None:
+            version = self.get_latest_version_number()
+        version_dict = self.get_version(version)
+        # If a path is given, zip it and compare to the existing hash
+        if path is not None:
+            # Make sure there is a zipfile to compare
+            if 'zipfile' in version_dict and version_dict['zipfile'] is not None:
+                # Zip the project path
+                new_zipfile = zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED)
+                rootlen = len(path) + 1
+                for base, _, files in os.walk(path):
+                    # Create local paths and write them to the new zipfile
+                    for file in files:
+                        fn = os.path.join(base, file)
+                        new_zipfile.write(fn, fn[rootlen:])
+                # Compare the hashes
+                result = self.compare_files(version_dict['zipfile'], new_zipfile)
+                # If the zipfiles are not the same iterate the version
+                if result == False:
+                    version = version + 1
+                    version_dict['zipfile'] = new_zipfile
+        now = datetime.today().strftime('%Y%m%d%H%M%S')
+        version_dict['version_name'] = now + '_v' + str(version) + self.name
+        version_dict['version_number'] = version
+        return version_dict
 
     def delete(self, version=None):
         """Delete a project or a project version, if the number is supplied."""
@@ -350,128 +470,97 @@ class Project():
         """Print the manifest."""
         print(json.dumps(self.reduced_manifest, indent=2, sort_keys=False, default=JSON_UTIL))
 
-    def save(self, new_version=False, new_project_name=None):
-        """Save a project's existing database record.
-        
-        Saves with or without creating a new version. The function does not yet add a new
-        zipfile to the manifest.
+    def save(self, path=None):
+        """Handle save requests from the WMS or workspace.
 
-        Returns the project's _id.
+        Default behaviour: Insert a new record.
         """
-        errors = []
-        # We're just updating the manifest.
-        if self.exists() and new_version == False:
-            try:
+        # Determine if the project exists in the database
+        if self.exists():
+            action = 'update'
+        else:
+            action = 'insert'
+        # If a path is supplied, zip it and create a manifest version
+        if path is not None:
+            self.reduced_manifest['content'] = self.create_version_dict(path)
+        # Execute the database query and return the result
+        result = self.save_record(action)
+        if result is not None:
+            return {'result': 'fail', 'errors': [result]}
+        else:
+            return {'result': 'success', '_id': result['_id'], 'errors': []}
+
+    def save_record(self, action='insert'):
+        """Insert or update a record in the database.
+        
+        This is a helper function to reduce code repetition.
+        """
+        try:
+            if action == 'update':
                 projects_db.update_one({'_id': ObjectId(self._id)},
                                                 {'$set': self.reduced_manifest}, upsert=False)
-            except pymongo.errors.OperationFailure as e:
-                print(e.code)
-                print(e.details)
-                errors.append('Error: Could not update the database.')
-        # We're adding a new version before updating the manifest
-        elif self.exists() and new_version == True:
-            version_dict = self.get_latest_version()
-            _, b, c = self.parse_version(version_dict['version_name'])
-            now = datetime.today().strftime('%Y%m%d%H%M%S')
-            new_version_num = int(b) + 1
-            new_version = {}
-            new_version['version_date'] = now
-            new_version['version_number'] = new_version_num
-            new_version['version_name'] = now + '_v' + str(new_version_num) + '_' + c
-            self.reduced_manifest['content'].append(new_version)
-            try:
-                projects_db.update_one({'_id': ObjectId(self._id)},
-                                                {'$set': {'content': self.reduced_manifest['content']}}, upsert=False)
-            except pymongo.errors.OperationFailure as e:
-                print(e.code)
-                print(e.details)
-                errors.append('Error: Could not update the database.')
-        # We are creating an entirely new record with version 1
-        else:
-            version_dict = {
-                'version_date': now,
-                'version_name': now + '_v1_' + new_project_name,
-                'version_number': 1
-            }
-            self.reduced_manifest['content'].append(version_dict)
-            try:
-                result = projects_db.insert_one(self.reduced_manifest)
-                _id = str(result['_id'])
-            except pymongo.errors.OperationFailure as e:
-                print(e.code)
-                print(e.details)
-                errors.append('Error: Could not update the database.')
-        # Return the result
-        if len(errors) == 0:
-            return {'result': 'success', '_id': self._id, 'errors': []}
-        else:
-            return {'result': 'fail', 'errors': errors}
-
-    def save_as(self, new_project_name, old_project_name=None,
-                old_project_version=None):
-        """Save a project's existing database record.
-        
-        Saves with or without creating a new version.
-        
-        This method is still untested.
-        """
-        errors = []
-        # If the project has already been saved, copy it with a new name.
-        if self.exists():
-            self.reduced_manifest['name'] = new_project_name
-            del self.reduced_manifest['_id']
-            now = datetime.today().strftime('%Y%m%d%H%M%S')
-            # Make a new project with a fresh version 1 dict
-            if old_project_name is None:
-                version_dict = {
-                    'version_name': now + '_v1_' + new_project_name,
-                    'version_number': 1
-                }
-                self.reduced_manifest['content'] = version_dict
-            # An old project is specified, so use a previous version
             else:
-                if old_project_version is None:
-                    version_dict = self.get_latest_version()
-                else:
-                    version_dict = self.get_version(old_project_version)
-                version_dict['version_number'] = 1
-                version_dict['version_name'] = now + '_v1_' + new_project_name 
-                a, _, c = self.parse_version(version_dict['version_name'])
-                version_dict['version_name'] = a + '_v1_' + c
-                self.reduced_manifest['content'] = version_dict
-            try:
-                result = projects_db.insert_one(self.reduced_manifest)
-                _id = str(result['_id'])
-            except pymongo.errors.OperationFailure as e:
-                print(e.code)
-                print(e.details)
-                errors.append('Error: Could not update the database.')
-        # The project has not been saved to the database, so you are
-        # calling save_as from the Workspace.
-        else:
-            if old_project_name == None:
-                now = datetime.today().strftime('%Y%m%d%H%M%S')
-                new_manifest = self.reduced_manifest
-                new_manifest = new_project_name
-                version_dict = {
-                    'version_date': now,
-                    'version_name': now + '_v1_' + new_project_name,
-                    'version_number': 1
-                }
-                self.reduced_manifest['content'] = version_dict
-                try:
-                    result = projects_db.insert_one(new_manifest)
-                    _id = str(result['_id'])
-                except pymongo.errors.OperationFailure as e:
-                    print(e.code)
-                    print(e.details)
-                    errors.append('Error: Could not update the database.')
-        # Return the result
-        if len(errors) == 0:
-            return {'result': 'success', '_id': self._id, 'errors': []}
-        else:
-            return {'result': 'fail', 'errors': errors}
+                projects_db.insert_one(self.reduced_manifest)
+            return None
+        except pymongo.errors.OperationFailure as e:
+            print(e.code)
+            print(e.details)
+            return 'Error: Could not update the database.'
 
+    def save_as(self, path=None, new_name=None):
+        """Handle save as requests from the WMS or workspace.
+
+        Default behaviour: Insert a new record.
+        """
+        # Determine if a new name is supplied
+        if new_name is None:
+            return {'result': 'fail', 'errors': ['No name has been supplied for the new project.']}
+        else:
+            new_name = datetime.today().strftime('%Y%m%d%H%M%S_') + new_name 
+            # If a path is supplied, zip the folder and create a version 1
+            if path is not None:
+            # Create a new project folder
+                try:
+                    path_parts = path.split('/')
+                    path_parts[-1] = new_name
+                    new_path = '/'.join(path_parts)
+                    copytree(path, new_path)
+                except OSError:
+                    return {'result': 'fail', 'errors': ['A project folder with that name already exists. Please try another name.']}
+                # Clear Outputs on a glob of all ipynb files
+                try:
+                    for filename in glob.iglob(path + '/**', recursive=True):
+                        if filename.endswith('.ipynb'):
+                            self.clean_nb(filename, clean_empty_cells=True, save=True)
+                except OSError:
+                    # Delete the new directory and fail since we have no way to provide this as a warning.
+                    rmtree(new_path)
+                    return {'result': 'fail', 'errors': ['Could not clear the notebook variables in the new project folder.']}
+                # Change the manifest name and delete the _id
+                self.reduced_manifest['name'] = new_name
+                if '_id' in self.reduced_manifest:
+                    del self.reduced_manifest['_id']
+                # If there are any project configs, start files, etc.,
+                # they should be reset here.
+                # Change the manifest version dict
+                self.reduced_manifest['content'] = self.create_version_dict(path, 1)
+                # Now insert the record in the database
+                result = self.save_record('insert')
+                if result is not None:
+                    return {'result': 'fail', 'errors': [result]}
+                else:
+                    return {'result': 'success', '_id': result['_id'], 'errors': []}
+            # We just need to insert a new database record with the new name
+            else:
+                self.reduced_manifest['name'] = new_name
+                self.reduced_manifest['content'] = []
+                if '_id' in self.reduced_manifest:
+                    del self.reduced_manifest['_id']
+                result = self.save_record('insert')
+                if result is not None:
+                    return {'result': 'fail', 'errors': [result]}
+                else:
+                    return {'result': 'success', '_id': result['id'], 'errors': []}
 
     def unzip(self, source=None, output_path=None, binary=False):
         """Unzip the specified file to a project folder in the Workspace.
