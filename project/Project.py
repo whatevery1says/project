@@ -38,15 +38,17 @@ class Project():
 
     """
 
-    def __init__(self, manifest, templates_dir, workspace_dir):
+    def __init__(self, manifest, templates_dir, workspace_dir, temp_dir):
         """Initialize the object."""
         self.manifest = manifest
         self.templates_dir = templates_dir
         self.workspace_dir = workspace_dir
+        self.temp_dir = temp_dir
         self.reduced_manifest = self.clean(manifest)
-        self.name = manifest['name']
         if '_id' in self.reduced_manifest:
             self._id = self.reduced_manifest['_id']
+        else:
+            self._id = None
 
     def clean(self, manifest):
         """Get a reduced version of the manifest, removing empty values."""
@@ -185,27 +187,41 @@ class Project():
         if version == None:
             version = self.get_latest_version_number()
         version_dict = self.get_version(version)
+        # Create an empty dict of the manifest doesn't have one
+        if version_dict == 0 or version_dict == None:
+            version_dict = {}
         # If a path is given, zip it and compare to the existing hash
         if path is not None:
+            now = datetime.today().strftime('%Y%m%d%H%M%S')
+            version_dict['version_name'] = now + '_v' + str(version) + self.reduced_manifest['name']
+            version_dict['version_number'] = version
+
             # Make sure there is a zipfile to compare
-            if 'zipfile' in version_dict and version_dict['zipfile'] is not None:
-                # Zip the project path
-                new_zipfile = zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED)
-                rootlen = len(path) + 1
-                for base, _, files in os.walk(path):
-                    # Create local paths and write them to the new zipfile
-                    for file in files:
-                        fn = os.path.join(base, file)
-                        new_zipfile.write(fn, fn[rootlen:])
+            # Zip the project path
+            if not os.path.exists(self.temp_dir):
+                os.makedirs(self.temp_dir)
+            new_zipfile_path = self.temp_dir + '/' + version_dict['version_name'] + '.zip'
+            new_zipfile = zipfile.ZipFile(new_zipfile_path, 'w', zipfile.ZIP_DEFLATED)
+            rootlen = len(path) + 1
+            for base, _, files in os.walk(path):
+                # Create local paths and write them to the new zipfile
+                for file in files:
+                    fn = os.path.join(base, file)
+                    new_zipfile.write(fn, fn[rootlen:])
                 # Compare the hashes
+            if 'zipfile' in version_dict and version_dict['zipfile'] is not None:
                 result = self.compare_files(version_dict['zipfile'], new_zipfile)
                 # If the zipfiles are not the same iterate the version
                 if result == False:
                     version = version + 1
-                    version_dict['zipfile'] = new_zipfile
-        now = datetime.today().strftime('%Y%m%d%H%M%S')
-        version_dict['version_name'] = now + '_v' + str(version) + self.name
-        version_dict['version_number'] = version
+                    version_dict['version_number'] = version
+            with open(new_zipfile_path, 'rb') as f:
+                    version_dict['zipfile'] = Binary(f.read())
+            # Now remove the temporary zipfile
+            new_zipfile.close()
+            os.remove(new_zipfile_path)
+            # else:
+            #     version_dict['zipfile'] = Binary(new_zipfile)
         return version_dict
 
     def delete(self, version=None):
@@ -236,7 +252,6 @@ class Project():
     def exists(self):
         """Test whether the project already exists in the database."""
         test = projects_db.find_one({'_id': ObjectId(self._id)})
-        # test = projects_db.find_one({'name': self.name}) # For testing
         if test is not None:
             return True
         return False
@@ -332,10 +347,12 @@ class Project():
         if 'content' in self.reduced_manifest:
             versions = self.reduced_manifest['content']
             for version in versions:
-                if version['version_' + key] == value:
+                if version['version_' + str(key)] == str(value):
                     return version
         else:
-            raise ValueError('No versions were included in the manifest.')
+            # Return 0 to tell create_version_dict() to start with {}
+            # raise ValueError('No versions were included in the manifest.')
+            return 0
 
     def launch(self, workflow, version=None, new=True):
         """Prepare the project in the Workspace.
@@ -476,7 +493,7 @@ class Project():
         Default behaviour: Insert a new record.
         """
         # Determine if the project exists in the database
-        if self.exists():
+        if self.exists() and self._id is not None:
             action = 'update'
         else:
             action = 'insert'
@@ -515,13 +532,13 @@ class Project():
         if new_name is None:
             return {'result': 'fail', 'errors': ['No name has been supplied for the new project.']}
         else:
-            new_name = datetime.today().strftime('%Y%m%d%H%M%S_') + new_name 
+            # new_name = datetime.today().strftime('%Y%m%d%H%M%S_') + new_name 
             # If a path is supplied, zip the folder and create a version 1
             if path is not None:
             # Create a new project folder
                 try:
                     path_parts = path.split('/')
-                    path_parts[-1] = new_name
+                    path_parts[-1] = datetime.today().strftime('%Y%m%d%H%M%S_') + new_name
                     new_path = '/'.join(path_parts)
                     copytree(path, new_path)
                 except OSError:
@@ -542,13 +559,17 @@ class Project():
                 # If there are any project configs, start files, etc.,
                 # they should be reset here.
                 # Change the manifest version dict
+                # Not sure if this call works; it might have to call 0
                 self.reduced_manifest['content'] = self.create_version_dict(path, 1)
                 # Now insert the record in the database
                 return self.save_record('insert')
             # We just need to insert a new database record with the new name
             else:
                 self.reduced_manifest['name'] = new_name
-                self.reduced_manifest['content'] = []
+                # We probably don't want to delete the version history,
+                # but we can't clear notebook outputs whilst the version
+                # is zipped. Let's live with this discrepancy for now.
+                # self.reduced_manifest['content'] = []
                 if '_id' in self.reduced_manifest:
                     del self.reduced_manifest['_id']
                 return self.save_record('insert')
