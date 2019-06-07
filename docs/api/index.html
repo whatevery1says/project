@@ -136,16 +136,12 @@
 <li><code>Project.make_new_project_dir()</code></li>
 <li><code>Project.parse_version()</code></li>
 <li><code>Project.print_manifest()</code></li>
+<li><code>Project.save()</code></li>
+<li><code>Project.save_as()</code></li>
 <li><code>Project.unzip()</code></li>
 <li><code>Project.zip()</code></li>
 </ul>
-<h3 id="provisionally-tested-methods">Provisionally Tested Methods</h3>
-<p>-- TBD.</p>
-<h3 id="to-do">To Do</h3>
-<ul>
-<li>Test <code>Project.save()</code> and <code>Project.save_as()</code> (with accompanying helper functions).</li>
-</ul>
-<p><strong>Last Update: Apr 8, 2019.</strong></p>
+<p><strong>Last Update: Jun 6, 2019.</strong></p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 </div>
@@ -201,14 +197,10 @@
 <pre><code class="python">date = parse_version('2019010101121212_v1_myproject', output='date')
 </code></pre>
 
-<h3 id="projectsaveself-new95versionfalse-new95project95namenone">Project.save(<em>self</em>, <em>new_version=False</em>, <em>new_project_name=None</em>)</h3>
+<h3 id="projectsaveself-pathnone">Project.save(<em>self</em>, <em>path=None</em>)</h3>
 <p>Updates the manifest record in the database or inserts a new one with version 1 and an empty workflow in the manifest.</p>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-</div>
-<p>This method could be extended to run in the Workspace, where the project folder would first be zipped up and added to the version dict in the manifest. Setting <code>new=True</code> would commit the zip file to a new version number within the existing project.</p>
 <h3 id="projectsave_asself-pathnone-new95namenone">Project.save_as(<em>self</em>, <em>path=None</em>, <em>new_name=None</em>)</h3>
-<p>Creates a duplicate of a project with a new name. If a <code>path</code> to an open project in the Workspace is supplied, that folder's contents are copied to a new project folder, notebook cells are reset, and a new manifest is written for the project. Finally, a new database record is created with the zipped folder as version 1. Otherwise, a new record is created in the database based on the old one. </p>
+<p>Creates a duplicate of a project with a new name. If a <code>path</code> to an open project in the Workspace is supplied, that folder's contents are copied to a new project folder, notebook cells are reset, and a new manifest is written for the project. Finally, a new database record is created with the zipped folder as version 1. Otherwise, a new record is created in the database based on the old one. Note that when <code>Project.save_as</code> is used from WMS, the complete version history of the source project is saved and notebook outputs are not cleared. This is because the zip archive(s) in the manifest would have to be unzipped. This functionality could be added in the future.</p>
 <h3 id="projectsave_recordself-actioninsert">Project.save_record(<em>self</em>, <em>action='insert'</em>)</h3>
 <p>Inserts or updates a new record in the database. This is a helper function to reduce code repetition.</p>
 <h3 id="projectunzipself-sourcenone-output95pathnone-binaryfalse">Project.unzip(<em>self</em>, <em>source=None</em>, <em>output_path=None</em>, <em>binary=False</em>)</h3>
